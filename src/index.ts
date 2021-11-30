@@ -36,7 +36,7 @@ class ToPDF {
       }
     )
 
-    const port = this.port = await getPort({ port: 3000 })
+    const port = (this.port = await getPort({ port: 3000 }))
     return new Promise(
       (resolve): void => {
         this.server = app.listen(
@@ -51,7 +51,16 @@ class ToPDF {
 
   public async downloadPdf(): Promise<void> {
     const { options, groups } = this
-    const browser = await puppeteer.launch()
+    const isLinux = process.platform === 'linux'
+    const args: string[] = []
+
+    if (isLinux) {
+      args.push('--no-sandbox')
+    }
+
+    const browser = await puppeteer.launch({
+      args
+    })
     const page = await browser.newPage()
     const pdfOptions: puppeteer.PDFOptions = {}
 
@@ -86,9 +95,7 @@ class ToPDF {
     const merger = new PDFMerger()
 
     for (let i = 0; i < groups.length; i++) {
-      merger.add(
-        path.join(options.outputPath, `${outputName}${i + 1}.pdf`)
-      )
+      merger.add(path.join(options.outputPath, `${outputName}${i + 1}.pdf`))
     }
 
     await merger.save(path.join(options.outputPath, `${outputName}.pdf`))
