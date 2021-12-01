@@ -4,7 +4,8 @@ import http from 'http'
 import { promisify } from 'util'
 import puppeteer from 'puppeteer'
 import express, { Express } from 'express'
-import PDFMerger from 'pdf-merger-js'
+// import PDFMerger from 'pdf-merger-js'
+import { PDFDocument } from 'pdf-lib'
 import getPort from 'get-port'
 
 import { chunk } from './utils'
@@ -68,13 +69,17 @@ class ToPDF {
       await page.goto(`http://127.0.0.1:${this.port}/?page=${i + 1}`, {
         waitUntil: 'networkidle0'
       })
-      // const height = await page.evaluate(
-      //   (): number => window.innerHeight
-      // )
+      const height = await page.evaluate(
+        (): number => document.body.scrollHeight
+      )
       await page.pdf(
-        Object.assign(pdfOptions, {
-          path: path.join(options.outputPath, `${options.name}${i + 1}.pdf`)
-        })
+        Object.assign(
+          {
+            height,
+            path: path.join(options.outputPath, `${options.name}${i + 1}.pdf`)
+          },
+          pdfOptions
+        )
       )
     }
 
@@ -83,13 +88,41 @@ class ToPDF {
 
   public async mergePDF(): Promise<void> {
     const { options, groups } = this
-    const merger = new PDFMerger()
+
+    const mergedPdf = await PDFDocument.create()
 
     for (let i = 0; i < groups.length; i++) {
-      merger.add(path.join(options.outputPath, `${options.name}${i + 1}.pdf`))
+      let document = await PDFDocument.load(
+        fs.readFileSync(
+          path.join(options.outputPath, `${options.name}${i + 1}.pdf`)
+        )
+      )
+
+      const copiedPages = await mergedPdf.copyPages(
+        document,
+        document.getPageIndices()
+      )
+      copiedPages.forEach(
+        (page): void => {
+          mergedPdf.addPage(page)
+        }
+      )
     }
 
-    await merger.save(path.join(options.outputPath, `${options.name}.pdf`))
+    const pdfBytes = await mergedPdf.save()
+    fs.writeFileSync(
+      path.join(options.outputPath, `${options.name}.pdf`),
+      pdfBytes
+    )
+
+    // PDFMerger increases the size of merged file
+    // const merger = new PDFMerger()
+
+    // for (let i = 0; i < groups.length; i++) {
+    //   merger.add(path.join(options.outputPath, `${options.name}${i + 1}.pdf`))
+    // }
+
+    // await merger.save(path.join(options.outputPath, `${options.name}.pdf`))
   }
 
   public async clean(): Promise<void> {
