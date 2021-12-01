@@ -8,8 +8,11 @@ const instance = new ImagesToPDF({
 })
 
 await instance.toPDF({
-  // outputName: 'page',
-  // width: 520,
+  // name: '',
+  pdf: {
+    // width: 520,
+    // height: 1000
+  },
   images: [
     'file1.jpg',
     'file2.jpg'

@@ -6,8 +6,10 @@ describe('images to pdf', () => {
   test('it should download images to pdf', async() => {
     const instance = new ImagesToPDF({})
     await instance.toPDF({
-      width: 520,
       chunk: 2,
+      pdf: {
+        width: 520,
+      },
       images: [
         'https://img.alicdn.com/tps/TB1cuJ6OXXXXXctXXXXXXXXXXXX-520-280.jpg',
         'https://img.alicdn.com/simba/img/TB1NUvAOXXXXXbWXVXXSutbFXXX.jpg',
@@ -15,6 +17,6 @@ describe('images to pdf', () => {
         'https://img.alicdn.com/tps/TB1dnUfNVXXXXaGaFXXXXXXXXXX-520-280.jpg']
     })
 
-    expect(fs.existsSync(path.join(__dirname, '../output/page.pdf'))).toBeTruthy()
+    expect(fs.existsSync(path.join(__dirname, '../output/images.pdf'))).toBeTruthy()
   })
 })

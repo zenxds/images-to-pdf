@@ -1,6 +1,6 @@
 {
   "name": "node-images-to-pdf",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "images-to-pdf",
   "keywords": [
     "images",
@@ -8,6 +8,7 @@
     "images-to-pdf"
   ],
   "main": "lib/index.js",
+  "types": "./index.d.ts",
   "scripts": {
     "start": "nodemon",
     "compile": "tsc --outDir lib",

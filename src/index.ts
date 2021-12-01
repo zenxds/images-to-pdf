@@ -24,7 +24,7 @@ class ToPDF {
   }
 
   public async startServer(): Promise<void> {
-    const { app, groups, options } = this
+    const { app, groups } = this
     app.set('views', path.join(__dirname, '../views'))
     app.set('view engine', 'hbs')
 
@@ -62,26 +62,18 @@ class ToPDF {
       args
     })
     const page = await browser.newPage()
-    const pdfOptions: puppeteer.PDFOptions = {}
-
-    if (options.width) {
-      pdfOptions.width = options.width
-    }
+    const pdfOptions: puppeteer.PDFOptions = Object.assign({}, options.pdf)
 
     for (let i = 0; i < groups.length; i++) {
       await page.goto(`http://127.0.0.1:${this.port}/?page=${i + 1}`, {
         waitUntil: 'networkidle0'
       })
-      const height = await page.evaluate(
-        (): number => document.body.scrollHeight
-      )
+      // const height = await page.evaluate(
+      //   (): number => window.innerHeight
+      // )
       await page.pdf(
         Object.assign(pdfOptions, {
-          height,
-          path: path.join(
-            options.outputPath,
-            `${options.outputName}${i + 1}.pdf`
-          )
+          path: path.join(options.outputPath, `${options.name}${i + 1}.pdf`)
         })
       )
     }
@@ -91,14 +83,13 @@ class ToPDF {
 
   public async mergePDF(): Promise<void> {
     const { options, groups } = this
-    const { outputName } = options
     const merger = new PDFMerger()
 
     for (let i = 0; i < groups.length; i++) {
-      merger.add(path.join(options.outputPath, `${outputName}${i + 1}.pdf`))
+      merger.add(path.join(options.outputPath, `${options.name}${i + 1}.pdf`))
     }
 
-    await merger.save(path.join(options.outputPath, `${outputName}.pdf`))
+    await merger.save(path.join(options.outputPath, `${options.name}.pdf`))
   }
 
   public async clean(): Promise<void> {
@@ -106,7 +97,7 @@ class ToPDF {
 
     for (let i = 0; i < groups.length; i++) {
       fs.unlinkSync(
-        path.join(this.options.outputPath, `${options.outputName}${i + 1}.pdf`)
+        path.join(this.options.outputPath, `${options.name}${i + 1}.pdf`)
       )
     }
 
@@ -133,9 +124,10 @@ export default class ImagesToPDF {
     const options: ToPdfOptions = Object.assign(
       {
         outputPath: this.options.outputPath,
-        outputName: 'page',
+        name: 'images',
         chunk: 10,
-        images: []
+        images: [],
+        pdf: {}
       },
       pdfOptions
     )

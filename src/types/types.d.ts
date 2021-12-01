@@ -4,7 +4,7 @@ declare interface Options {
 
 declare interface ToPdfOptions extends Options {
   images: string[]
-  outputName: string
+  name: string
   chunk: number
-  width?: number
+  pdf: import('puppeteer').PDFOptions
 }
