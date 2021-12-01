@@ -50,6 +50,11 @@ class ToPDF {
     )
   }
 
+  public getChunkPath(i: number): string {
+    const { options } = this
+    return path.join(options.outputPath, `${options.name}${i + 1}.pdf`)
+  }
+
   public async downloadPdf(): Promise<void> {
     const { options, groups } = this
     const isLinux = process.platform === 'linux'
@@ -66,6 +71,11 @@ class ToPDF {
     const pdfOptions: puppeteer.PDFOptions = Object.assign({}, options.pdf)
 
     for (let i = 0; i < groups.length; i++) {
+      const chunkPath = this.getChunkPath(i)
+      if (options.cacheChunk && fs.existsSync(chunkPath)) {
+        continue
+      }
+
       await page.goto(`http://127.0.0.1:${this.port}/?page=${i + 1}`, {
         waitUntil: 'networkidle0'
       })
@@ -76,7 +86,7 @@ class ToPDF {
         Object.assign(
           {
             height,
-            path: path.join(options.outputPath, `${options.name}${i + 1}.pdf`)
+            path: chunkPath
           },
           pdfOptions
         )
@@ -93,9 +103,7 @@ class ToPDF {
 
     for (let i = 0; i < groups.length; i++) {
       let document = await PDFDocument.load(
-        fs.readFileSync(
-          path.join(options.outputPath, `${options.name}${i + 1}.pdf`)
-        )
+        fs.readFileSync(this.getChunkPath(i))
       )
 
       const copiedPages = await mergedPdf.copyPages(
@@ -129,9 +137,11 @@ class ToPDF {
     const { options, server, groups } = this
 
     for (let i = 0; i < groups.length; i++) {
-      fs.unlinkSync(
-        path.join(this.options.outputPath, `${options.name}${i + 1}.pdf`)
-      )
+      const chunkPath = this.getChunkPath(i)
+
+      if (!options.cacheChunk) {
+        fs.unlinkSync(chunkPath)
+      }
     }
 
     if (server) {
@@ -159,6 +169,7 @@ export default class ImagesToPDF {
         outputPath: this.options.outputPath,
         name: 'images',
         chunk: 10,
+        cacheChunk: false,
         images: [],
         pdf: {}
       },
