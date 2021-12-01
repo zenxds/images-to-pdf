@@ -80,7 +80,7 @@ class ToPDF {
         waitUntil: 'networkidle0'
       })
       const height = await page.evaluate(
-        (): number => document.body.scrollHeight
+        (): number => document.images[0].height || document.body.scrollHeight
       )
       await page.pdf(
         Object.assign(
