@@ -10,7 +10,7 @@ import getPort from 'get-port'
 
 import { chunk } from './utils'
 
-class ToPDF {
+export class ToPDF {
   private options: ToPdfOptions
   private app: Express
   private groups: string[][]
@@ -80,7 +80,7 @@ class ToPDF {
         waitUntil: 'networkidle0'
       })
       const height = await page.evaluate(
-        (): number => document.images[0].height || document.body.scrollHeight
+        (): number => document.body.scrollHeight
       )
       await page.pdf(
         Object.assign(
@@ -136,10 +136,9 @@ class ToPDF {
   public async clean(): Promise<void> {
     const { options, server, groups } = this
 
-    for (let i = 0; i < groups.length; i++) {
-      const chunkPath = this.getChunkPath(i)
-
-      if (!options.cacheChunk) {
+    if (!options.cacheChunk) {
+      for (let i = 0; i < groups.length; i++) {
+        const chunkPath = this.getChunkPath(i)
         fs.unlinkSync(chunkPath)
       }
     }
