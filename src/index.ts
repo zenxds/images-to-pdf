@@ -68,7 +68,6 @@ export class ToPDF {
       args
     })
     const page = await browser.newPage()
-    const pdfOptions: puppeteer.PDFOptions = Object.assign({}, options.pdf)
 
     for (let i = 0; i < groups.length; i++) {
       const chunkPath = this.getChunkPath(i)
@@ -82,15 +81,22 @@ export class ToPDF {
       const height = await page.evaluate(
         (): number => document.body.scrollHeight
       )
-      await page.pdf(
-        Object.assign(
-          {
-            height,
-            path: chunkPath
-          },
-          pdfOptions
-        )
+      const width = await page.evaluate((): number => document.images[0].width)
+
+      const pdfOptions: puppeteer.PDFOptions = Object.assign(
+        {
+          width,
+          height,
+          path: chunkPath
+        },
+        options.pdf
       )
+
+      if (options.parseHeight) {
+        pdfOptions.height = options.parseHeight(height)
+      }
+
+      await page.pdf(pdfOptions)
     }
 
     await browser.close()
