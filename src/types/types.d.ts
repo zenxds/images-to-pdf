@@ -7,7 +7,7 @@ declare interface ToPdfOptions extends Options {
   name: string
   chunk: number
   concurrent: number
-  parseHeight?: (height: number) => number | string
+  convertHeight?: (height: number) => number | string
   cacheChunk: boolean
   pdf: import('puppeteer').PDFOptions
 }

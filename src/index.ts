@@ -83,8 +83,8 @@ export class ToPDF {
       options.pdf
     )
 
-    if (options.parseHeight) {
-      pdfOptions.height = options.parseHeight(height)
+    if (options.convertHeight) {
+      pdfOptions.height = options.convertHeight(height)
     }
 
     await page.pdf(pdfOptions)
