@@ -13,19 +13,21 @@ import { chunk } from './utils'
 export class ToPDF {
   private options: ToPdfOptions
   private app: Express
-  private groups: string[][]
+  private groups: string[][][]
+  private chunks: string[][]
   private server?: http.Server
   private port: number
 
   public constructor(options: ToPdfOptions) {
     this.options = options
     this.app = express()
-    this.groups = chunk(this.options.images, this.options.chunk)
+    this.chunks = chunk(this.options.images, this.options.chunk)
+    this.groups = chunk(this.chunks, this.options.concurrent)
     this.port = 3000
   }
 
   public async startServer(): Promise<void> {
-    const { app, groups } = this
+    const { app, chunks } = this
     app.set('views', path.join(__dirname, '../views'))
     app.set('view engine', 'hbs')
 
@@ -33,7 +35,7 @@ export class ToPDF {
       '/',
       (req, res): void => {
         const page = req.query.page ? parseInt(req.query.page as string) : 1
-        res.render('index', { images: groups[page - 1] })
+        res.render('index', { images: chunks[page - 1] })
       }
     )
 
@@ -55,8 +57,59 @@ export class ToPDF {
     return path.join(options.outputPath, `${options.name}${i + 1}.pdf`)
   }
 
+  private async concurrentDownloadItem(
+    browser: puppeteer.Browser,
+    i: number
+  ): Promise<void> {
+    const { options } = this
+    const chunkPath = this.getChunkPath(i)
+    if (options.cacheChunk && fs.existsSync(chunkPath)) {
+      return
+    }
+
+    const page = await browser.newPage()
+    await page.goto(`http://127.0.0.1:${this.port}/?page=${i + 1}`, {
+      waitUntil: 'networkidle0'
+    })
+    const height = await page.evaluate((): number => document.body.scrollHeight)
+    const width = await page.evaluate((): number => document.images[0].width)
+
+    const pdfOptions: puppeteer.PDFOptions = Object.assign(
+      {
+        width,
+        height,
+        path: chunkPath
+      },
+      options.pdf
+    )
+
+    if (options.parseHeight) {
+      pdfOptions.height = options.parseHeight(height)
+    }
+
+    await page.pdf(pdfOptions)
+    await page.close()
+  }
+
+  private async concurrentDownload(
+    browser: puppeteer.Browser,
+    groupIndex: number
+  ): Promise<void> {
+    const { groups, options } = this
+    const group = groups[groupIndex]
+    await Promise.all(
+      group.map(
+        (item, i): Promise<void> =>
+          this.concurrentDownloadItem(
+            browser,
+            groupIndex * options.concurrent + i
+          )
+      )
+    )
+  }
+
   public async downloadPdf(): Promise<void> {
-    const { options, groups } = this
+    const { groups } = this
     const isLinux = process.platform === 'linux'
     const args: string[] = []
 
@@ -67,47 +120,20 @@ export class ToPDF {
     const browser = await puppeteer.launch({
       args
     })
-    const page = await browser.newPage()
 
     for (let i = 0; i < groups.length; i++) {
-      const chunkPath = this.getChunkPath(i)
-      if (options.cacheChunk && fs.existsSync(chunkPath)) {
-        continue
-      }
-
-      await page.goto(`http://127.0.0.1:${this.port}/?page=${i + 1}`, {
-        waitUntil: 'networkidle0'
-      })
-      const height = await page.evaluate(
-        (): number => document.body.scrollHeight
-      )
-      const width = await page.evaluate((): number => document.images[0].width)
-
-      const pdfOptions: puppeteer.PDFOptions = Object.assign(
-        {
-          width,
-          height,
-          path: chunkPath
-        },
-        options.pdf
-      )
-
-      if (options.parseHeight) {
-        pdfOptions.height = options.parseHeight(height)
-      }
-
-      await page.pdf(pdfOptions)
+      await this.concurrentDownload(browser, i)
     }
 
     await browser.close()
   }
 
   public async mergePDF(): Promise<void> {
-    const { options, groups } = this
+    const { options, chunks } = this
 
     const mergedPdf = await PDFDocument.create()
 
-    for (let i = 0; i < groups.length; i++) {
+    for (let i = 0; i < chunks.length; i++) {
       let document = await PDFDocument.load(
         fs.readFileSync(this.getChunkPath(i))
       )
@@ -132,18 +158,18 @@ export class ToPDF {
     // PDFMerger increases the size of merged file
     // const merger = new PDFMerger()
 
-    // for (let i = 0; i < groups.length; i++) {
-    //   merger.add(path.join(options.outputPath, `${options.name}${i + 1}.pdf`))
+    // for (let i = 0; i < chunks.length; i++) {
+    //   merger.add(this.getChunkPath(i))
     // }
 
     // await merger.save(path.join(options.outputPath, `${options.name}.pdf`))
   }
 
   public async clean(): Promise<void> {
-    const { options, server, groups } = this
+    const { options, server, chunks } = this
 
     if (!options.cacheChunk) {
-      for (let i = 0; i < groups.length; i++) {
+      for (let i = 0; i < chunks.length; i++) {
         const chunkPath = this.getChunkPath(i)
         fs.unlinkSync(chunkPath)
       }
@@ -174,6 +200,7 @@ export default class ImagesToPDF {
         outputPath: this.options.outputPath,
         name: 'images',
         chunk: 10,
+        concurrent: 5,
         cacheChunk: false,
         images: [],
         pdf: {}
