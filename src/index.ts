@@ -4,6 +4,7 @@ import http from 'http'
 import { promisify } from 'util'
 import puppeteer from 'puppeteer'
 import express, { Express } from 'express'
+import { ensureDirSync } from 'fs-extra'
 // import PDFMerger from 'pdf-merger-js'
 import { PDFDocument } from 'pdf-lib'
 import getPort from 'get-port'
@@ -109,7 +110,7 @@ export class ToPDF {
   }
 
   public async downloadPdf(): Promise<void> {
-    const { groups } = this
+    const { groups, options } = this
     const isLinux = process.platform === 'linux'
     const args: string[] = []
 
@@ -120,6 +121,8 @@ export class ToPDF {
     const browser = await puppeteer.launch({
       args
     })
+
+    ensureDirSync(options.outputPath)
 
     for (let i = 0; i < groups.length; i++) {
       await this.concurrentDownload(browser, i)

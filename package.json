@@ -1,6 +1,6 @@
 {
   "name": "node-images-to-pdf",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "images-to-pdf",
   "keywords": [
     "images",
@@ -46,6 +46,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/express": "^4.17.13",
+    "@types/fs-extra": "^9.0.13",
     "@types/jest": "^27.0.3",
     "@types/node": "^16.11.11",
     "@typescript-eslint/eslint-plugin": "^1.9.0",
@@ -63,6 +64,7 @@
   },
   "dependencies": {
     "express": "^4.17.1",
+    "fs-extra": "^10.0.0",
     "get-port": "5.1.1",
     "hbs": "^4.2.0",
     "pdf-lib": "^1.17.1",
