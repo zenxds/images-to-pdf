@@ -70,6 +70,7 @@ export class ToPDF {
 
     const page = await browser.newPage()
     await page.goto(`http://127.0.0.1:${this.port}/?page=${i + 1}`, {
+      timeout: options.timeout,
       waitUntil: 'networkidle0'
     })
     const height = await page.evaluate((): number => document.body.scrollHeight)
@@ -204,6 +205,7 @@ export default class ImagesToPDF {
         name: 'images',
         chunk: 10,
         concurrent: 5,
+        timeout: 0,
         cacheChunk: false,
         images: [],
         pdf: {}
