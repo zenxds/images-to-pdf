@@ -119,6 +119,10 @@ export class ToPDF {
       args.push('--no-sandbox')
     }
 
+    if (options.proxy) {
+      args.push('--proxy-server=' + options.proxy)
+    }
+
     const browser = await puppeteer.launch({
       args
     })
