@@ -28,10 +28,11 @@ export class ToPDF {
   }
 
   public async startServer(): Promise<void> {
-    const { app, chunks } = this
+    const { app, chunks, options } = this
     app.set('views', path.join(__dirname, '../views'))
     app.set('view engine', 'hbs')
 
+    app.use(express.static(options.outputPath))
     app.get(
       '/',
       (req, res): void => {

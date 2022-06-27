@@ -11,6 +11,7 @@ describe('images to pdf', () => {
         width: 520,
       },
       images: [
+        'a.jpeg',
         'https://img.alicdn.com/tps/TB1cuJ6OXXXXXctXXXXXXXXXXXX-520-280.jpg',
         'https://img.alicdn.com/simba/img/TB1NUvAOXXXXXbWXVXXSutbFXXX.jpg',
         'https://ossgw.alicdn.com/creatives-assets/f5567768-b901-47b0-b005-5b0cc67b5a70.jpg',
