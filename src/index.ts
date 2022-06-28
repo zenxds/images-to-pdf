@@ -4,18 +4,19 @@ import http from 'http'
 import { promisify } from 'util'
 import puppeteer from 'puppeteer'
 import express, { Express } from 'express'
-import { ensureDirSync } from 'fs-extra'
+import { ensureDirSync, removeSync } from 'fs-extra'
 // import PDFMerger from 'pdf-merger-js'
 import { PDFDocument } from 'pdf-lib'
 import getPort from 'get-port'
 
-import { chunk } from './utils'
+import { chunk, isEmptyDir } from './utils'
 
 export class ToPDF {
   private options: ToPdfOptions
   private app: Express
   private groups: string[][][]
   private chunks: string[][]
+  private cacheDir: string
   private server?: http.Server
   private port: number
 
@@ -25,6 +26,9 @@ export class ToPDF {
     this.chunks = chunk(this.options.images, this.options.chunk)
     this.groups = chunk(this.chunks, this.options.concurrent)
     this.port = 3000
+    this.cacheDir = path.join(options.outputPath, '_cache')
+
+    ensureDirSync(this.cacheDir)
   }
 
   public async startServer(): Promise<void> {
@@ -56,7 +60,7 @@ export class ToPDF {
 
   public getChunkPath(i: number): string {
     const { options } = this
-    return path.join(options.outputPath, `${options.name}${i + 1}.pdf`)
+    return path.join(this.cacheDir, `${options.name}${i + 1}.pdf`)
   }
 
   private async concurrentDownloadItem(
@@ -180,7 +184,11 @@ export class ToPDF {
     if (!options.cacheChunk) {
       for (let i = 0; i < chunks.length; i++) {
         const chunkPath = this.getChunkPath(i)
-        fs.unlinkSync(chunkPath)
+        removeSync(chunkPath)
+      }
+
+      if (isEmptyDir(this.cacheDir)) {
+        removeSync(this.cacheDir)
       }
     }
 
