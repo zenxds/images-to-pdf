@@ -1,6 +1,6 @@
 {
   "name": "node-images-to-pdf",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "images-to-pdf",
   "keywords": [
     "images",
@@ -68,7 +68,6 @@
     "get-port": "5.1.1",
     "hbs": "^4.2.0",
     "pdf-lib": "^1.17.1",
-    "pdf-merger-js": "^3.2.1",
     "puppeteer": "^12.0.0"
   }
 }

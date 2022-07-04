@@ -2,6 +2,11 @@
 
 transform images to pdf file, based on puppeteer
 
+* local and remote images
+* cache chunk pdf
+* proxy support
+* docker env support
+
 ```
 import ImagesToPDF from 'node-images-to-pdf'
 // const ImagesToPDF = require('node-images-to-pdf').default

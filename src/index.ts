@@ -9,6 +9,7 @@ import { ensureDirSync, removeSync } from 'fs-extra'
 import { PDFDocument } from 'pdf-lib'
 import getPort from 'get-port'
 
+import FileCache from './cache'
 import { chunk, isEmptyDir } from './utils'
 
 export class ToPDF {
@@ -19,6 +20,7 @@ export class ToPDF {
   private cacheDir: string
   private server?: http.Server
   private port: number
+  private cache: FileCache
 
   public constructor(options: ToPdfOptions) {
     this.options = options
@@ -27,6 +29,10 @@ export class ToPDF {
     this.groups = chunk(this.chunks, this.options.concurrent)
     this.port = 3000
     this.cacheDir = path.join(options.outputPath, '_cache')
+    this.cache = new FileCache({
+      root: this.cacheDir,
+      name: 'cache'
+    })
 
     ensureDirSync(this.cacheDir)
   }
@@ -58,18 +64,13 @@ export class ToPDF {
     )
   }
 
-  public getChunkPath(i: number): string {
-    const { options } = this
-    return path.join(this.cacheDir, `${options.name}${i + 1}.pdf`)
-  }
-
   private async concurrentDownloadItem(
     browser: puppeteer.Browser,
     i: number
   ): Promise<void> {
     const { options } = this
     const chunkPath = this.getChunkPath(i)
-    if (options.cacheChunk && fs.existsSync(chunkPath)) {
+    if (this.hasCacheFile(chunkPath)) {
       return
     }
 
@@ -115,7 +116,7 @@ export class ToPDF {
     )
   }
 
-  public async downloadPdf(): Promise<void> {
+  public async downloadPDF(): Promise<void> {
     const { groups, options } = this
     const isLinux = process.platform === 'linux'
     const args: string[] = []
@@ -144,13 +145,15 @@ export class ToPDF {
   public async mergePDF(): Promise<void> {
     const { options, chunks } = this
 
-    const mergedPdf = await PDFDocument.create()
+    const outputName = path.join(options.outputPath, `${options.name}.pdf`)
+    const mergedPdf = this.hasCacheFile(outputName)
+      ? await this.loadPDF(outputName)
+      : await PDFDocument.create()
 
-    for (let i = 0; i < chunks.length; i++) {
-      let document = await PDFDocument.load(
-        fs.readFileSync(this.getChunkPath(i))
-      )
-
+    for (let i = mergedPdf.getPageCount(); i < chunks.length; i++) {
+      const chunkPath = this.getChunkPath(i)
+      const cacheKey = path.basename(chunkPath)
+      const document = await this.loadPDF(chunkPath)
       const copiedPages = await mergedPdf.copyPages(
         document,
         document.getPageIndices()
@@ -160,13 +163,14 @@ export class ToPDF {
           mergedPdf.addPage(page)
         }
       )
+
+      if (options.cacheChunk) {
+        this.cache.set(cacheKey, '1')
+      }
     }
 
     const pdfBytes = await mergedPdf.save()
-    fs.writeFileSync(
-      path.join(options.outputPath, `${options.name}.pdf`),
-      pdfBytes
-    )
+    fs.writeFileSync(outputName, pdfBytes)
 
     // PDFMerger increases the size of merged file
     // const merger = new PDFMerger()
@@ -182,6 +186,8 @@ export class ToPDF {
     const { options, server, chunks } = this
 
     if (!options.cacheChunk) {
+      this.cache.clean()
+
       for (let i = 0; i < chunks.length; i++) {
         const chunkPath = this.getChunkPath(i)
         removeSync(chunkPath)
@@ -196,6 +202,20 @@ export class ToPDF {
       const close = promisify(server.close.bind(server))
       await close()
     }
+  }
+
+  public getChunkPath(i: number): string {
+    const { options } = this
+    return path.join(this.cacheDir, `${options.name}${i + 1}.pdf`)
+  }
+
+  public hasCacheFile(file: string): boolean {
+    const { options } = this
+    return options.cacheChunk && fs.existsSync(file)
+  }
+
+  public loadPDF(file: string): Promise<PDFDocument> {
+    return PDFDocument.load(fs.readFileSync(file))
   }
 }
 
@@ -228,7 +248,7 @@ export default class ImagesToPDF {
     const toPdf = new ToPDF(options)
 
     await toPdf.startServer()
-    await toPdf.downloadPdf()
+    await toPdf.downloadPDF()
     await toPdf.mergePDF()
     await toPdf.clean()
   }
