@@ -5,7 +5,6 @@ import { promisify } from 'util'
 import puppeteer from 'puppeteer'
 import express, { Express } from 'express'
 import { ensureDirSync, removeSync } from 'fs-extra'
-// import PDFMerger from 'pdf-merger-js'
 import { PDFDocument } from 'pdf-lib'
 import getPort from 'get-port'
 
@@ -149,8 +148,9 @@ export class ToPDF {
     const mergedPdf = this.hasCacheFile(outputName)
       ? await this.loadPDF(outputName)
       : await PDFDocument.create()
+    const count = mergedPdf.getPageCount()
 
-    for (let i = mergedPdf.getPageCount(); i < chunks.length; i++) {
+    for (let i = count; i < chunks.length; i++) {
       const chunkPath = this.getChunkPath(i)
       const cacheKey = path.basename(chunkPath)
       const document = await this.loadPDF(chunkPath)
@@ -169,17 +169,10 @@ export class ToPDF {
       }
     }
 
-    const pdfBytes = await mergedPdf.save()
-    fs.writeFileSync(outputName, pdfBytes)
-
-    // PDFMerger increases the size of merged file
-    // const merger = new PDFMerger()
-
-    // for (let i = 0; i < chunks.length; i++) {
-    //   merger.add(this.getChunkPath(i))
-    // }
-
-    // await merger.save(path.join(options.outputPath, `${options.name}.pdf`))
+    if (mergedPdf.getPageCount() > count) {
+      const pdfBytes = await mergedPdf.save()
+      fs.writeFileSync(outputName, pdfBytes)
+    }
   }
 
   public async clean(): Promise<void> {
