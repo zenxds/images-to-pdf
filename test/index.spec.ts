@@ -10,7 +10,7 @@ describe('images to pdf', () => {
       pdf: {
         width: 520,
       },
-      cacheChunk: true,
+      cacheChunk: false,
       images: [
         'https://img.alicdn.com/tps/TB1cuJ6OXXXXXctXXXXXXXXXXXX-520-280.jpg',
         'https://img.alicdn.com/simba/img/TB1NUvAOXXXXXbWXVXXSutbFXXX.jpg',
