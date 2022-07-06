@@ -47,8 +47,9 @@ export class ToPDF {
       return
     }
 
-    if (fs.existsSync(latest)) {
-      fs.unlinkSync(latest)
+    const latestFile = path.join(this.cacheDir, latest)
+    if (fs.existsSync(latestFile)) {
+      fs.unlinkSync(latestFile)
     }
 
     if (fs.existsSync(outputName)) {
@@ -187,7 +188,7 @@ export class ToPDF {
 
       if (options.cacheChunk) {
         this.cache.set(cacheKey, '1')
-        this.cache.set('latest', chunkPath)
+        this.cache.set('latest', cacheKey)
       }
     }
 
