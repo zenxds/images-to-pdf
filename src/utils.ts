@@ -15,3 +15,7 @@ export function isEmptyDir(dest: string): boolean {
     (fs.statSync(dest).isDirectory() && !fs.readdirSync(dest).length)
   )
 }
+
+export function startsWidth(arr1: string[], arr2: string[]): boolean {
+  return arr1.join('').startsWith(arr2.join(''))
+}

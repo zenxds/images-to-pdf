@@ -9,47 +9,86 @@ import { PDFDocument } from 'pdf-lib'
 import getPort from 'get-port'
 
 import FileCache from './cache'
-import { chunk, isEmptyDir } from './utils'
+import { chunk, isEmptyDir, startsWidth } from './utils'
 
 export class ToPDF {
-  private options: ToPdfOptions
-  private app: Express
-  private groups: string[][][]
-  private chunks: string[][]
-  private cacheDir: string
-  private server?: http.Server
-  private port: number
-  private cache: FileCache
-  private outputName: string
+  public options: ToPdfOptions
+  public app: Express
+  public groups: string[][][]
+  public chunks: string[][]
+  public cache: FileCache
+  public cacheDir: string
+  public cacheChunk: boolean
+  public outputName: string
+  public server?: http.Server
+  public port: number
 
   public constructor(options: ToPdfOptions) {
     this.options = options
     this.app = express()
+    this.port = 3000
     this.chunks = chunk(this.options.images, this.options.chunk)
     this.groups = chunk(this.chunks, this.options.concurrent)
-    this.port = 3000
     this.cacheDir = path.join(options.outputPath, '_cache')
     this.cache = new FileCache({
       root: this.cacheDir,
       name: 'cache'
     })
+    this.cacheChunk = this.options.cacheChunk
     this.outputName = path.join(options.outputPath, `${options.name}.pdf`)
+  }
 
-    ensureDirSync(this.cacheDir)
+  public async setup(): Promise<void> {
+    await this.check()
+    await this.init()
+    await this.cleanLatestChunk()
+    await this.startServer()
+  }
+
+  public init(): void {
+    // 注意这里判断要用options，不管check的结果都要缓存
+    if (this.options.cacheChunk) {
+      this.cache.set('chunk', this.options.chunk)
+      this.cache.set('images', this.options.images)
+    }
+
+    if (this.cacheChunk) {
+      ensureDirSync(this.cacheDir)
+    }
+  }
+
+  // 还应该check images
+  public check(): void {
+    if (this.cacheChunk) {
+      const beforeChunk = this.cache.get('chunk')
+      // 如果跟前一次的chunk分法不一致
+      if (beforeChunk && beforeChunk !== this.options.chunk) {
+        this.cacheChunk = false
+      }
+
+      // 如果传入的图片发生了改变
+      const beforeImages = this.cache.get('images')
+      if (
+        beforeImages &&
+        !startsWidth(this.options.images, beforeImages as string[])
+      ) {
+        this.cacheChunk = false
+      }
+    }
   }
 
   // 删除最新一页，因为最新一页的图片可能是不是一整个chunk
-  public async fixLatestChunk(): Promise<void> {
-    const { outputName, options } = this
-    const latest = this.cache.get('latest')
+  public async cleanLatestChunk(): Promise<void> {
+    const { outputName, cacheChunk } = this
+    const latest = this.cache.get('latest') as string
 
-    if (!options.cacheChunk || !latest) {
+    if (!cacheChunk || !latest) {
       return
     }
 
     const latestFile = path.join(this.cacheDir, latest)
     if (fs.existsSync(latestFile)) {
-      fs.unlinkSync(latestFile)
+      removeSync(latestFile)
     }
 
     if (fs.existsSync(outputName)) {
@@ -165,7 +204,7 @@ export class ToPDF {
   }
 
   public async mergePDF(): Promise<void> {
-    const { options, chunks, outputName } = this
+    const { chunks, outputName, cacheChunk } = this
 
     const mergedPdf = this.hasCacheFile(outputName)
       ? await this.loadPDF(outputName)
@@ -174,7 +213,6 @@ export class ToPDF {
 
     for (let i = count; i < chunks.length; i++) {
       const chunkPath = this.getChunkPath(i)
-      const cacheKey = path.basename(chunkPath)
       const document = await this.loadPDF(chunkPath)
       const copiedPages = await mergedPdf.copyPages(
         document,
@@ -186,9 +224,8 @@ export class ToPDF {
         }
       )
 
-      if (options.cacheChunk) {
-        this.cache.set(cacheKey, '1')
-        this.cache.set('latest', cacheKey)
+      if (cacheChunk) {
+        this.cache.set('latest', path.basename(chunkPath))
       }
     }
 
@@ -199,10 +236,10 @@ export class ToPDF {
   }
 
   public async clean(): Promise<void> {
-    const { options, server, chunks } = this
+    const { server, chunks, cacheChunk } = this
 
-    if (!options.cacheChunk) {
-      this.cache.clean()
+    if (!cacheChunk) {
+      removeSync(this.cache.file)
 
       for (let i = 0; i < chunks.length; i++) {
         const chunkPath = this.getChunkPath(i)
@@ -226,8 +263,8 @@ export class ToPDF {
   }
 
   public hasCacheFile(file: string): boolean {
-    const { options } = this
-    return options.cacheChunk && fs.existsSync(file)
+    const { cacheChunk } = this
+    return cacheChunk && fs.existsSync(file)
   }
 
   public loadPDF(file: string): Promise<PDFDocument> {
@@ -247,7 +284,7 @@ export default class ImagesToPDF {
     )
   }
 
-  public async toPDF(pdfOptions: Partial<ToPdfOptions>): Promise<void> {
+  public async toPDF(pdfOptions: Partial<ToPdfOptions>): Promise<ToPDF> {
     const options: ToPdfOptions = Object.assign(
       {
         outputPath: this.options.outputPath,
@@ -263,10 +300,10 @@ export default class ImagesToPDF {
     )
     const toPdf = new ToPDF(options)
 
-    await toPdf.startServer()
-    await toPdf.fixLatestChunk()
+    await toPdf.setup()
     await toPdf.downloadPDF()
     await toPdf.mergePDF()
     await toPdf.clean()
+    return toPdf
   }
 }

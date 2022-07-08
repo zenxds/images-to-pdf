@@ -7,12 +7,13 @@ interface Options {
   file?: string
 }
 
-type Content = Record<string, string>
+type ValueType = string | number | string[]
+type CacheContent = Record<string, ValueType>
 
 export default class FileCache {
   public options: Options
   public file: string
-  public cache: Content
+  public cache: CacheContent
 
   public constructor(options: Options) {
     this.options = options
@@ -29,7 +30,7 @@ export default class FileCache {
     })
   }
 
-  public getFileContent(): Content {
+  public getFileContent(): CacheContent {
     // json file
     if (fs.existsSync(this.file)) {
       return require(this.file)
@@ -43,11 +44,11 @@ export default class FileCache {
     fs.writeFileSync(file, JSON.stringify(cache, null, 2))
   }
 
-  public get(key: string): string {
-    return this.cache[key] || ''
+  public get(key: string): ValueType {
+    return this.cache[key]
   }
 
-  public set(key: string, value: string): void {
+  public set(key: string, value: ValueType): void {
     this.cache[key] = value
     this.save()
   }
