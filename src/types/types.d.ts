@@ -3,7 +3,7 @@ declare interface Options {
 }
 
 declare interface ToPdfOptions extends Options {
-  images: string[]
+  images: string[] | string[][]
   name: string
   chunk: number
   timeout: number

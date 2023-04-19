@@ -124,4 +124,22 @@ describe('images to pdf', () => {
     expect(pdf.getPageCount()).toBe(2)
     expect(pdf.getPage(1).getHeight() > 300).toBeTruthy()
   })
+
+  test('it should process images array', async() => {
+    const instance = new ImagesToPDF({})
+    await instance.toPDF({
+      chunk: 2,
+      pdf: {
+        width: 520,
+      },
+      cacheChunk: true,
+      images: [
+        images.slice(0, 3),
+        images.slice(3)
+      ]
+    })
+
+    let pdf = await PDFDocument.load(fs.readFileSync(pdfFile))
+    expect(pdf.getPage(0).getHeight() > 600).toBeTruthy()
+  })
 })

@@ -9,13 +9,14 @@ import { PDFDocument } from 'pdf-lib'
 import getPort from 'get-port'
 
 import FileCache from './cache'
-import { chunk, isEmptyDir, startsWidth } from './utils'
+import { chunk, flatten, isEmptyDir, startsWidth } from './utils'
 
 export class ToPDF {
   public options: ToPdfOptions
   public app: Express
-  public groups: string[][][]
+  public images: string[]
   public chunks: string[][]
+  public groups: string[][][]
   public cache: FileCache
   public cacheDir: string
   public cacheChunk: boolean
@@ -27,7 +28,17 @@ export class ToPDF {
     this.options = options
     this.app = express()
     this.port = 3000
-    this.chunks = chunk(this.options.images, this.options.chunk)
+
+    if (Array.isArray(this.options.images[0])) {
+      const images = this.options.images as string[][]
+      this.images = flatten(images)
+      this.chunks = images
+    } else {
+      const images = this.options.images as string[]
+      this.images = images
+      this.chunks = chunk(images, this.options.chunk)
+    }
+
     this.groups = chunk(this.chunks, this.options.concurrent)
     this.cacheDir = path.join(options.outputPath, '_cache')
     this.cache = new FileCache({
@@ -49,7 +60,7 @@ export class ToPDF {
     // 注意这里判断要用options，不管check的结果都要缓存
     if (this.options.cacheChunk) {
       this.cache.set('chunk', this.options.chunk)
-      this.cache.set('images', this.options.images)
+      this.cache.set('images', this.images)
     }
 
     if (this.cacheChunk) {
@@ -68,10 +79,7 @@ export class ToPDF {
 
       // 如果传入的图片发生了改变
       const beforeImages = this.cache.get('images')
-      if (
-        beforeImages &&
-        !startsWidth(this.options.images, beforeImages as string[])
-      ) {
+      if (beforeImages && !startsWidth(this.images, beforeImages as string[])) {
         this.cacheChunk = false
       }
     }
