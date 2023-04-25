@@ -139,7 +139,7 @@ export class ToPDF {
   ): Promise<void> {
     const { options } = this
     const chunkPath = this.getChunkPath(i)
-    if (this.hasCacheFile(chunkPath)) {
+    if (this.hasCacheFile(chunkPath.pdf)) {
       return
     }
 
@@ -151,11 +151,21 @@ export class ToPDF {
     const height = await page.evaluate((): number => document.body.scrollHeight)
     const width = await page.evaluate((): number => document.images[0].width)
 
+    await page.setViewport({
+      width,
+      height
+    })
+    await page.screenshot({
+      fullPage: true,
+      type: 'jpeg',
+      path: chunkPath.image
+    })
+
     const pdfOptions: puppeteer.PDFOptions = Object.assign(
       {
         width,
         height,
-        path: chunkPath
+        path: chunkPath.pdf
       },
       options.pdf
     )
@@ -221,7 +231,7 @@ export class ToPDF {
 
     for (let i = count; i < chunks.length; i++) {
       const chunkPath = this.getChunkPath(i)
-      const document = await this.loadPDF(chunkPath)
+      const document = await this.loadPDF(chunkPath.pdf)
       const copiedPages = await mergedPdf.copyPages(
         document,
         document.getPageIndices()
@@ -233,7 +243,7 @@ export class ToPDF {
       )
 
       if (cacheChunk) {
-        this.cache.set('latest', path.basename(chunkPath))
+        this.cache.set('latest', path.basename(chunkPath.pdf))
       }
     }
 
@@ -251,7 +261,8 @@ export class ToPDF {
 
       for (let i = 0; i < chunks.length; i++) {
         const chunkPath = this.getChunkPath(i)
-        removeSync(chunkPath)
+        removeSync(chunkPath.pdf)
+        removeSync(chunkPath.image)
       }
 
       if (isEmptyDir(this.cacheDir)) {
@@ -265,9 +276,13 @@ export class ToPDF {
     }
   }
 
-  public getChunkPath(i: number): string {
+  public getChunkPath(i: number): ChunkPath {
     const { options } = this
-    return path.join(this.cacheDir, `${options.name}${i + 1}.pdf`)
+    const chunkName = path.join(this.cacheDir, `${options.name}${i + 1}`)
+    return {
+      pdf: `${chunkName}.pdf`,
+      image: `${chunkName}.jpg`
+    }
   }
 
   public hasCacheFile(file: string): boolean {
