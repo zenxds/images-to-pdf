@@ -21,10 +21,9 @@ export default class FileCache {
     const { root, name, file } = this.options
     this.file = file || path.join(root, name + '.json')
     this.cache = this.getFileContent()
-    this.ensureDir()
   }
 
-  private ensureDir(): void {
+  public ensureDir(): void {
     fs.mkdirSync(path.dirname(this.file), {
       recursive: true
     })
@@ -41,6 +40,8 @@ export default class FileCache {
 
   public save(): void {
     const { file, cache } = this
+
+    this.ensureDir()
     fs.writeFileSync(file, JSON.stringify(cache, null, 2))
   }
 

@@ -1,6 +1,6 @@
 {
   "name": "node-images-to-pdf",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "images-to-pdf",
   "keywords": [
     "images",
@@ -67,6 +67,7 @@
     "fs-extra": "^10.0.0",
     "get-port": "5.1.1",
     "hbs": "^4.2.0",
+    "jimp": "^0.22.7",
     "pdf-lib": "^1.17.1",
     "puppeteer": "^12.0.0"
   }
