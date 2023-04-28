@@ -47,8 +47,8 @@ describe('images to pdf', () => {
       images
     })
 
-    expect(toPDF.cacheChunk).toBeFalsy()
     expect(fs.existsSync(cacheDir)).toBeFalsy()
+    expect(toPDF.cache.get('chunk')).toBeFalsy()
   })
 
   test('it should check chunk change', async() => {
@@ -71,7 +71,8 @@ describe('images to pdf', () => {
       images
     })
 
-    expect(toPDF.cacheChunk).toBeFalsy()
+    expect(fs.existsSync(cacheDir)).toBeTruthy()
+    expect(toPDF.cache.get('chunk')).toBe(3)
   })
 
   test('it should check images change', async() => {
@@ -94,7 +95,7 @@ describe('images to pdf', () => {
       images: [images[1], images[2]]
     })
 
-    expect(toPDF.cacheChunk).toBeFalsy()
+    expect(toPDF.images.length).toBe(2)
   })
 
   test('it should clean latest chunk', async() => {

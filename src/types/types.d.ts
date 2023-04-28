@@ -1,4 +1,5 @@
 declare interface Options {
+  chromePath?: string
   outputPath: string
 }
 

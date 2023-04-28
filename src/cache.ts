@@ -21,6 +21,7 @@ export default class FileCache {
     const { root, name, file } = this.options
     this.file = file || path.join(root, name + '.json')
     this.cache = this.getFileContent()
+    this.ensureDir()
   }
 
   public ensureDir(): void {

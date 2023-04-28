@@ -236,6 +236,7 @@ export class ToPDF {
     }
 
     const browser = await puppeteer.launch({
+      executablePath: this.options.chromePath,
       args
     })
 
