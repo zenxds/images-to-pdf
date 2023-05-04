@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import http from 'http'
 import { promisify } from 'util'
-import puppeteer from 'puppeteer'
+import puppeteer, { Browser, PDFOptions } from 'puppeteer'
 import express, { Express } from 'express'
 import { ensureDirSync, removeSync } from 'fs-extra'
 import { PDFDocument } from 'pdf-lib'
@@ -138,7 +138,7 @@ export class ToPDF {
   }
 
   private async concurrentDownloadItem(
-    browser: puppeteer.Browser,
+    browser: Browser,
     i: number
   ): Promise<void> {
     const { options } = this
@@ -175,7 +175,7 @@ export class ToPDF {
     const height = await page.evaluate((): number => document.body.scrollHeight)
     const width = await page.evaluate((): number => document.images[0].width)
 
-    const pdfOptions: puppeteer.PDFOptions = Object.assign(
+    const pdfOptions: PDFOptions = Object.assign(
       {
         width,
         height,
@@ -206,7 +206,7 @@ export class ToPDF {
   }
 
   private async concurrentDownload(
-    browser: puppeteer.Browser,
+    browser: Browser,
     groupIndex: number
   ): Promise<void> {
     const { groups, options } = this
@@ -237,6 +237,7 @@ export class ToPDF {
 
     const browser = await puppeteer.launch({
       executablePath: this.options.chromePath,
+      headless: 'new',
       args
     })
 
@@ -341,7 +342,6 @@ export default class ImagesToPDF {
   public async toPDF(pdfOptions: Partial<ToPdfOptions>): Promise<ToPDF> {
     const options: ToPdfOptions = Object.assign(
       {
-        outputPath: this.options.outputPath,
         name: 'images',
         chunk: 10,
         concurrent: 5,
@@ -351,6 +351,7 @@ export default class ImagesToPDF {
         images: [],
         pdf: {}
       },
+      this.options,
       pdfOptions
     )
     const toPdf = new ToPDF(options)
