@@ -109,7 +109,7 @@ describe('images to pdf', () => {
       images: images.slice(0, 3)
     })
 
-    let pdf = await PDFDocument.load(fs.readFileSync(pdfFile))
+    let pdf = await PDFDocument.load(new Uint8Array(fs.readFileSync(pdfFile)))
     expect(pdf.getPage(1).getHeight() < 300).toBeTruthy()
 
     await instance.toPDF({
@@ -121,7 +121,7 @@ describe('images to pdf', () => {
       images
     })
 
-    pdf = await PDFDocument.load(fs.readFileSync(pdfFile))
+    pdf = await PDFDocument.load(new Uint8Array(fs.readFileSync(pdfFile)))
     expect(pdf.getPageCount()).toBe(2)
     expect(pdf.getPage(1).getHeight() > 300).toBeTruthy()
   })
@@ -140,7 +140,7 @@ describe('images to pdf', () => {
       ]
     })
 
-    let pdf = await PDFDocument.load(fs.readFileSync(pdfFile))
+    let pdf = await PDFDocument.load(new Uint8Array(fs.readFileSync(pdfFile)))
     expect(pdf.getPage(0).getHeight() > 600).toBeTruthy()
   })
 })

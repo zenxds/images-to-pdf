@@ -70,3 +70,6 @@ typings/
 package-lock.json
 
 output/
+
+.claude/
+scripts/

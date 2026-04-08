@@ -106,7 +106,7 @@ export class ToPDF {
     if (fs.existsSync(outputName)) {
       const pdf = await this.loadPDF(outputName)
       await pdf.removePage(pdf.getPageCount() - 1)
-      fs.writeFileSync(outputName, await pdf.save())
+      this.writeLargeFile(outputName, await pdf.save())
     }
   }
 
@@ -160,7 +160,7 @@ export class ToPDF {
           if (response.request().resourceType() === 'image') {
             const buffer = await response.buffer()
             const file = `${chunkPath.name}-${images.indexOf(url)}${ext}`
-            fs.writeFileSync(file, buffer)
+            fs.writeFileSync(file, new Uint8Array(buffer))
 
             imageFiles.push(file)
           }
@@ -237,7 +237,7 @@ export class ToPDF {
 
     const browser = await puppeteer.launch({
       executablePath: this.options.chromePath,
-      headless: 'new',
+      headless: true,
       args
     })
 
@@ -279,7 +279,7 @@ export class ToPDF {
 
     if (mergedPdf.getPageCount() > count) {
       const pdfBytes = await mergedPdf.save()
-      fs.writeFileSync(outputName, pdfBytes)
+      this.writeLargeFile(outputName, pdfBytes)
     }
   }
 
@@ -323,7 +323,20 @@ export class ToPDF {
   }
 
   public loadPDF(file: string): Promise<PDFDocument> {
-    return PDFDocument.load(fs.readFileSync(file))
+    return PDFDocument.load(new Uint8Array(fs.readFileSync(file)))
+  }
+
+  private writeLargeFile(file: string, data: Uint8Array): void {
+    const fd = fs.openSync(file, 'w')
+    const CHUNK = 512 * 1024 * 1024
+    try {
+      for (let offset = 0; offset < data.length; offset += CHUNK) {
+        const len = Math.min(CHUNK, data.length - offset)
+        fs.writeSync(fd, data, offset, len)
+      }
+    } finally {
+      fs.closeSync(fd)
+    }
   }
 }
 
